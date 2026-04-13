@@ -1,7 +1,5 @@
 from __future__ import annotations
-
 from pathlib import Path
-
 from .interpreter import Interpreter, RuntimeError_
 from .lexer import Lexer, LexerError
 from .parser import ParseError, Parser

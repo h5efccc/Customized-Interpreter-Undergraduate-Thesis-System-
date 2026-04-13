@@ -1,7 +1,1 @@
-## Hello, we are the group CSD11
-print("Hello, we are the group CSD11")
-
-let fname = "Sheban"
-let lname = "Austria"
-
-print(fname + " " + lname)
+print("hello")
