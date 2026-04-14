@@ -1,1 +1,2 @@
-print("hello")
+let x = true
+print(x)

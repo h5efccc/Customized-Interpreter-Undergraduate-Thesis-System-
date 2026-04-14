@@ -4,7 +4,6 @@ from .interpreter import Interpreter, RuntimeError_
 from .lexer import Lexer, LexerError
 from .parser import ParseError, Parser
 
-
 def run_file(path_str: str) -> int:
     path = Path(path_str)
     if path.suffix.lower() != ".pnc":

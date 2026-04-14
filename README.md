@@ -13,14 +13,6 @@ print(a + b)
 print("Hello World")
 ```
 
-## How to run
-
-From `c:\Thesis System`:
-
-```powershell
-python .\edu_interpreter.py .\examples\hello.pnc
-```
-
 ## What it shows
 
 - **Lexical analysis**: prints the list of tokens
@@ -43,9 +35,9 @@ python .\edu_interpreter.py .\examples\hello.pnc
 - Print outputs
 
 ## What our Interpreter can't do (at this moment)
-- for/while loops                                                   Should we include this?
-- Logical Operations (like > | < | == | != | && | etc... )          Should we include this?
-- if statements                                                     Should we include this?
+- for/while loops
+- Logical Operations (like > | < | == | != | && | etc... )
+- if statements
 
 ## What our Interpreter will not support
 - OOP features

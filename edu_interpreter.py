@@ -1,5 +1,4 @@
 import sys
-
 from pnc_lang.runner import run_file
 
 
@@ -12,4 +11,3 @@ def main(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv))
-

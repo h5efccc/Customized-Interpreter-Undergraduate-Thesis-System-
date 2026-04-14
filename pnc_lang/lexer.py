@@ -1,14 +1,9 @@
 from __future__ import annotations
-
 from typing import Any
-
 from .tokens import Token, TokenType
-
 
 class LexerError(Exception):
     """Represents an error that happens during lexical analysis (tokenization)."""
-
-
 class Lexer:
     """LEXER: turns raw source code characters into a list of tokens.
 
