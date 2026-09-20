@@ -24,4 +24,4 @@ EXPOSE 8080
 
 RUN chmod +x /app/docker-start.sh
 
-CMD ["/app/docker-start.sh"]
+CMD ["sh", "/app/docker-start.sh"]
