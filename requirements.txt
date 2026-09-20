@@ -1,0 +1,5 @@
+# Python deps for the desktop Tkinter simulator.
+# Tk itself comes from the system package python3-tk (see Dockerfile).
+# Optional web stack (not required for the noVNC desktop stream):
+#   fastapi
+#   uvicorn[standard]

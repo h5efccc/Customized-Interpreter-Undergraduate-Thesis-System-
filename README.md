@@ -120,6 +120,24 @@ Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/). The page calls `POST /api
 
 To host online later: deploy this app on Render, Railway, or Fly.io (run `uvicorn web.app:app --host 0.0.0.0 --port $PORT`).
 
+### Full desktop GUI in a browser (Docker + noVNC)
+
+This streams the **real Tkinter window** (not the simplified HTML UI) through noVNC.
+
+```powershell
+# Build (needs Docker Desktop installed)
+docker build -t pnc-simulator .
+
+# Run — then open the printed noVNC URL
+docker run --rm -p 8080:8080 pnc-simulator
+```
+
+In your browser open:
+
+`http://127.0.0.1:8080/vnc.html?autoconnect=true&resize=scale`
+
+For cloud hosting, use a provider that supports **Docker containers** (Render, Railway, Fly.io, a VPS). Map port **8080** and open the same `/vnc.html?...` path on the public URL.
+
 ## Documentation
 
 - **[SYNTAX_NOTES.md](SYNTAX_NOTES.md)** — How to write PNC programs (templates & examples)
