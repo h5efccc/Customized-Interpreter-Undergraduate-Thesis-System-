@@ -1,0 +1,27 @@
+// Demo: booleans, comments, and Java-style if / else
+int a = 5;
+int b = 10;
+print(a + b);
+
+boolean passing = a < b;
+print(passing);
+
+if (a < b) {
+    print("a is smaller");
+} else {
+    print("a is not smaller");
+}
+
+int score = 85;
+if (score >= 90) {
+    print("A");
+} else if (score >= 80) {
+    print("B");
+} else {
+    print("C");
+}
+
+boolean ready = true;
+if (passing && ready) {
+    print("ready to go");
+}

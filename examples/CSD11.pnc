@@ -1,0 +1,6 @@
+print("Hello, we are the group CSD11");
+
+string fname = "Sheban";
+string lname = "Austria";
+
+print(fname + " " + lname);

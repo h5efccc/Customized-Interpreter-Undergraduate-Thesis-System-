@@ -1,13 +1,114 @@
 from __future__ import annotations
-from pathlib import Path
-from .interpreter import Interpreter, RuntimeError_
-from .lexer import Lexer, LexerError
-from .parser import ParseError, Parser
 
-def run_file(path_str: str) -> int:
+from pathlib import Path
+
+from .analysis import analyze_file, analyze_source
+from .visualizer import (
+    format_ast_tree,
+    format_pipeline_summary,
+    format_source,
+    format_token_stream,
+    format_token_table,
+    format_transformation_flow,
+    stage_banner,
+)
+
+TOTAL_STAGES = 4
+
+
+def run_source(source: str, *, run_execution: bool = False) -> int:
+    """Run the CLI simulation on source text."""
+    print("PNC Language Analysis Simulator")
+    print("Scanner-Parser Architecture Demonstration")
+    print(format_transformation_flow())
+
+    print(stage_banner("SOURCE INPUT", 1, TOTAL_STAGES))
+    print(format_source(source))
+
+    print(stage_banner("LEXICAL ANALYSIS (Scanner)", 2, TOTAL_STAGES))
+    print("The lexer scans the source character-by-character and emits tokens.\n")
+
+    result = analyze_source(source, run_execution=run_execution)
+
+    if result.lexical_error:
+        print(f"Lexical error: {result.lexical_error}")
+        if result.lexical_tip:
+            print(f"  Tip: {result.lexical_tip}")
+        print()
+        if result.tokens:
+            print("Partial Token Table (before dead state):")
+            print(format_token_table(result.tokens))
+            print("Partial Token Stream:")
+            print(format_token_stream(result.tokens))
+        if result.automaton and result.automaton.has_dead_state:
+            print("FA simulation ended in DEAD state.\n")
+        print(format_pipeline_summary(
+            result.token_count, 0, syntax_valid=False, executed=False,
+        ))
+        return 1
+
+    print("Token Table:")
+    print(format_token_table(result.tokens))
+    print("Token Stream (left-to-right):")
+    print(format_token_stream(result.tokens))
+
+    print(stage_banner("SYNTAX ANALYSIS (Parser) + AST CONSTRUCTION", 3, TOTAL_STAGES))
+    print("The parser validates tokens against the context-free grammar (see GRAMMAR.md)")
+    print("and builds an Abstract Syntax Tree (AST).\n")
+
+    if result.syntax_error:
+        print("Syntax validation: FAILED")
+        print(f"  {result.syntax_error}")
+        if result.syntax_tip:
+            print(f"  Tip: {result.syntax_tip}")
+        print()
+        if result.statements:
+            print("Partial Abstract Syntax Tree (recovered before the error):")
+            print(format_ast_tree(result.statements))
+        else:
+            print("No AST nodes could be recovered before the error.\n")
+        print(format_pipeline_summary(
+            result.token_count,
+            result.statement_count,
+            syntax_valid=False,
+            executed=False,
+        ))
+        return 1
+
+    print("Syntax validation: PASSED\n")
+    print("Abstract Syntax Tree:")
+    print(format_ast_tree(result.statements))
+
+    print(stage_banner("VISUAL FEEDBACK SUMMARY", 4, TOTAL_STAGES))
+    if run_execution:
+        print("Optional execution phase enabled.\n")
+        if result.execution_output:
+            print(result.execution_output, end="" if result.execution_output.endswith("\n") else "\n")
+        if result.execution_ok:
+            print("\nExecution completed without runtime errors.")
+        else:
+            print(f"\nRuntime error during optional execution: {result.execution_error}")
+    else:
+        print(
+            "This simulator focuses on lexical and syntax analysis.\n"
+            "Execution is optional. Re-run with --execute to simulate runtime.\n"
+        )
+
+    print(format_pipeline_summary(
+        result.token_count,
+        result.statement_count,
+        syntax_valid=True,
+        executed=run_execution,
+        execution_ok=result.execution_ok,
+    ))
+    return 0 if (not run_execution or result.execution_ok) else 1
+
+
+def run_file(path_str: str, *, run_execution: bool = False) -> int:
+    """Run the CLI simulation on a .pnc source file."""
     path = Path(path_str)
     if path.suffix.lower() != ".pnc":
-        print(f"Error: expected a .pnc file, got {path.suffix}")
+        print(f"Error: expected a .pnc file, got {path.suffix!r}")
         return 2
 
     try:
@@ -16,32 +117,4 @@ def run_file(path_str: str) -> int:
         print(f"Error: file not found: {path}")
         return 2
 
-    print("=== SOURCE CODE ===")
-    print(source)
-
-    print("\n=== LEXICAL ANALYSIS (TOKENS) ===")
-    try:
-        tokens = Lexer(source).tokenize()
-        for t in tokens:
-            print(t)
-    except LexerError as e:
-        print(f"Lexical error: {e}")
-        return 1
-
-    print("\n=== SYNTAX ANALYSIS ===")
-    try:
-        statements = Parser(tokens).parse()
-        print("Syntax: VALID")
-    except ParseError as e:
-        print(f"Syntax error: {e}")
-        return 1
-
-    print("\n=== EXECUTION ===")
-    try:
-        Interpreter().run(statements)
-        print("\nProgram finished successfully.")
-        return 0
-    except RuntimeError_ as e:
-        print(f"Runtime error: {e}")
-        return 1
-
+    return run_source(source, run_execution=run_execution)

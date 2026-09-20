@@ -1,8 +1,5 @@
-"""PNC educational language package.
+"""PNC Language Analysis Simulator.
 
-This package separates the interpreter pipeline into:
-- lexer (lexical analysis)
-- parser (syntax analysis)
-- interpreter (execution)
+Scanner-parser architecture for demonstrating lexical and syntax analysis.
+See GRAMMAR.md, SYNTAX_NOTES.md, and DEVELOPER_GUIDE.md for documentation.
 """
-

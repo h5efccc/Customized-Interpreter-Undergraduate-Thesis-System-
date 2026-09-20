@@ -1,18 +1,56 @@
 {
+
   "version": "0.2.0",
+
   "configurations": [
+
     {
-      "name": "Run PNC Hello Program",
+
+      "name": "Run PNC Simulator (GUI)",
+
       "type": "python",
+
       "request": "launch",
+
       "program": "${workspaceFolder}/edu_interpreter.py",
+
       "args": [
+
         "${file}"
+
       ],
-      "console": "integratedTerminal",
+
+      "console": "internalConsole",
+
       "cwd": "${workspaceFolder}"
+
+    },
+
+    {
+
+      "name": "Run PNC Simulator (CLI)",
+
+      "type": "python",
+
+      "request": "launch",
+
+      "program": "${workspaceFolder}/edu_interpreter.py",
+
+      "args": [
+
+        "--cli",
+
+        "${file}"
+
+      ],
+
+      "console": "integratedTerminal",
+
+      "cwd": "${workspaceFolder}"
+
     }
+
   ]
+
 }
 
-// This .json file is responsible for running ".pnc" files to VSCode "Run" button

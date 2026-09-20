@@ -1,0 +1,39 @@
+// Demo: while / do-while / for, arrays, and ++ / --
+
+int[] nums = {10, 20, 30, 40, 50};
+int i = 0;
+int sum = 0;
+
+// while: walk the array with postfix ++
+while (i < 5) {
+    sum = sum + nums[i];
+    i++;
+}
+print(sum);
+
+// do-while: body runs at least once
+int n = 0;
+do {
+    n++;
+} while (n < 3);
+print(n);
+
+// for: declare counter, test, and update in the header
+for (int k = 0; k < 5; k++) {
+    print(nums[k]);
+}
+
+// Prefix / postfix update on array elements
+nums[0]++;
+print(nums[0]);
+--nums[1];
+print(nums[1]);
+
+// Nested-style: for + if over the same array
+int count = 0;
+for (int j = 0; j < 5; j++) {
+    if (nums[j] >= 30) {
+        count++;
+    }
+}
+print(count);
