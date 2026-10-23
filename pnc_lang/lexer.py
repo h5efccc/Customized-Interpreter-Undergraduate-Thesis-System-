@@ -1,5 +1,7 @@
 from __future__ import annotations
 from typing import Any
+
+from .diagnostics import Diagnostic, parse_line_column
 from .tokens import Token, TokenType
 
 # Java-inspired reserved words
@@ -99,6 +101,11 @@ def _is_adjacent_transpose(a: str, b: str) -> bool:
 def tip_for_lexical_error(message: str, *, symbol: str | None = None) -> str:
     """Educational tip paired with a lexical error message."""
     lower = message.lower()
+    # Check && / || before the generic "did you mean" keyword tip.
+    if "did you mean '&&'" in lower or symbol == "&":
+        return "Logical AND is written as `&&` with two ampersands."
+    if "did you mean '||'" in lower or symbol == "|":
+        return "Logical OR is written as `||` with two pipes."
     if "did you mean" in lower or "misspelled" in lower or "unrecognized word" in lower:
         return (
             "Reserved keywords must be spelled exactly. "
@@ -118,10 +125,6 @@ def tip_for_lexical_error(message: str, *, symbol: str | None = None) -> str:
             "Numbers may have at most one decimal point (e.g. `1.25`). "
             "Remove the extra `.` or split into separate values."
         )
-    if "did you mean '&&'" in lower or symbol == "&":
-        return "Logical AND is written as `&&` with two ampersands."
-    if "did you mean '||'" in lower or symbol == "|":
-        return "Logical OR is written as `||` with two pipes."
     if "unexpected character" in lower:
         ch = symbol
         if ch in (None, "✗", "EOF", "eps"):
@@ -217,6 +220,58 @@ class Lexer:
         # Add a special EOF token so the parser knows where the input ends
         self.tokens.append(Token(TokenType.EOF, "", None, self.line, self.column))
         return self.tokens
+
+    def tokenize_collecting_errors(self) -> tuple[list[Token], list[Diagnostic]]:
+        """Scan the whole source, recording every lexical error without stopping.
+
+        Unlike ``tokenize()`` / the FA simulator, this recovers after each bad
+        lexeme so students can see how many fixes are needed at once.
+        """
+        diagnostics: list[Diagnostic] = []
+        while not self._is_at_end():
+            self.start = self.current
+            try:
+                self._scan_token()
+            except LexerError as e:
+                diagnostics.append(self._lexical_diagnostic(str(e)))
+                # Unterminated-string recovery consumes a newline without updating
+                # line/column (fail-fast path never continues). Fix tracking here.
+                if (
+                    self.current > 0
+                    and self.source[self.current - 1] == "\n"
+                    and self.column != 1
+                ):
+                    self.line += 1
+                    self.column = 1
+                # If nothing was consumed (defensive), skip one character.
+                elif self.current == self.start and not self._is_at_end():
+                    self._advance()
+
+        if self.tokens and self.tokens[-1].type in INCOMPLETE_AT_EOF:
+            msg = incomplete_eof_message(self.tokens[-1])
+            diagnostics.append(self._lexical_diagnostic(msg))
+
+        self.tokens.append(Token(TokenType.EOF, "", None, self.line, self.column))
+        return self.tokens, diagnostics
+
+    def _lexical_diagnostic(self, message: str) -> Diagnostic:
+        line, column = parse_line_column(
+            message, default_line=self.line, default_column=max(1, self.column - 1)
+        )
+        symbol = None
+        if "Unexpected character '" in message:
+            start = message.find("'")
+            end = message.find("'", start + 1) if start >= 0 else -1
+            if start >= 0 and end > start:
+                symbol = message[start + 1 : end]
+        tip = tip_for_lexical_error(message, symbol=symbol)
+        return Diagnostic(
+            stage="lexical",
+            message=message,
+            tip=tip,
+            line=line,
+            column=column,
+        )
 
     def _is_at_end(self) -> bool:
         """Return True when we have consumed all characters in the source."""

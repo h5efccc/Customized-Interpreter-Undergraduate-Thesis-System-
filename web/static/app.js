@@ -76,7 +76,9 @@ function fillTokens(data) {
   const tbody = $("#token-table tbody");
   tbody.innerHTML = "";
   if (data.lexical_error) {
-    status.textContent = `Lexical analysis: FAILED — ${data.lexical_error}`;
+    const n = data.error_count || (data.diagnostics || []).length || 1;
+    const multi = n > 1 ? ` (${n} errors — see Summary)` : "";
+    status.textContent = `Lexical analysis: FAILED — ${data.lexical_error}${multi}`;
     status.className = "panel-status fail";
   } else {
     status.textContent = `Lexical analysis: PASSED — ${data.token_count} token(s)`;
@@ -112,7 +114,9 @@ function fillAst(data) {
     return;
   }
   if (data.syntax_error) {
-    status.textContent = `Syntax analysis: FAILED — ${data.syntax_error}`;
+    const n = data.error_count || (data.diagnostics || []).length || 1;
+    const multi = n > 1 ? ` (${n} errors — see Summary)` : "";
+    status.textContent = `Syntax analysis: FAILED — ${data.syntax_error}${multi}`;
     status.className = "panel-status fail";
   } else {
     status.textContent = `Syntax analysis: PASSED — ${data.statement_count} statement(s)`;
@@ -161,12 +165,31 @@ function fillSummary(data, executed) {
     `Syntax valid:        ${data.syntax_valid}`,
   ];
   if (data.lexical_error) {
-    lines.push(`Lexical error:       ${data.lexical_error}`);
+    lines.push(`First lexical error: ${data.lexical_error}`);
     if (data.lexical_tip) lines.push(`Tip:                 ${data.lexical_tip}`);
   }
   if (data.syntax_error) {
-    lines.push(`Syntax error:        ${data.syntax_error}`);
+    lines.push(`First syntax error:  ${data.syntax_error}`);
     if (data.syntax_tip) lines.push(`Tip:                 ${data.syntax_tip}`);
+  }
+  if (data.diagnostics_report || (data.diagnostics && data.diagnostics.length)) {
+    lines.push("");
+    lines.push("All errors (lexical + syntax), ordered by line number.");
+    lines.push("Token table / FA / AST still stop at the first pipeline failure.");
+    lines.push("");
+    if (data.diagnostics_report) {
+      lines.push(data.diagnostics_report);
+    } else {
+      lines.push(`Errors found: ${data.diagnostics.length}`);
+      lines.push("-".repeat(40));
+      data.diagnostics.forEach((d, i) => {
+        const stage = d.stage === "lexical" ? "Lexical" : "Syntax";
+        lines.push(`${i + 1}. [${stage}] line ${d.line}, column ${d.column}`);
+        lines.push(`   ${d.message}`);
+        if (d.tip) lines.push(`   Suggestion: ${d.tip}`);
+        if (i < data.diagnostics.length - 1) lines.push("");
+      });
+    }
   }
   if (executed) {
     lines.push(`Execution:           ${data.execution_ok ? "PASSED" : "FAILED"}`);

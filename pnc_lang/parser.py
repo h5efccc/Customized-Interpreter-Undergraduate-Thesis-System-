@@ -26,10 +26,22 @@ from .ast_nodes import (
     Variable,
     WhileStmt,
 )
+from .diagnostics import Diagnostic, parse_line_column
 from .tokens import Token, TokenType
 
 # Data type keywords used in variable declarations
 DATA_TYPES = frozenset({"int", "double", "string", "boolean"})
+# Keywords that may appear while synchronizing; `else` is included so we can
+# stop before an orphaned else, but it cannot *start* a recovered statement.
+_STATEMENT_START_KEYWORDS = frozenset({
+    "print", "if", "while", "for", "do", "else",
+    "int", "double", "string", "boolean",
+})
+# Tokens that can begin a fresh statement after panic-mode recovery.
+_RECOVERABLE_STATEMENT_KEYWORDS = frozenset({
+    "print", "if", "while", "for", "do",
+    "int", "double", "string", "boolean",
+})
 
 
 class ParseError(Exception):
@@ -68,6 +80,10 @@ class Parser:
     def __init__(self, tokens: list[Token]):
         self.tokens = tokens
         self.current = 0
+        # When True, panic-mode recovery continues past errors (multi-error scan).
+        # The FA/AST halt-on-first path leaves this False.
+        self._collecting_errors = False
+        self._diagnostics: list[Diagnostic] = []
 
     def parse(self) -> list[Stmt]:
         outcome = self.parse_with_recovery()
@@ -76,6 +92,7 @@ class Parser:
         return outcome.statements
 
     def parse_with_recovery(self) -> ParseOutcome:
+        """Parse until the first syntax error (used for AST / diagram display)."""
         statements: list[Stmt] = []
         while not self._is_at_end():
             try:
@@ -85,6 +102,80 @@ class Parser:
                     statements.append(e.partial)
                 return ParseOutcome(statements, error=e.message, tip=e.tip)
         return ParseOutcome(statements)
+
+    def parse_collecting_errors(self) -> list[Diagnostic]:
+        """Scan the full token stream and collect every syntax error.
+
+        Uses panic-mode synchronization so later statements are still checked.
+        Does not replace ``parse_with_recovery`` for AST construction.
+        """
+        self._collecting_errors = True
+        self._diagnostics = []
+        self.current = 0
+        while not self._is_at_end():
+            try:
+                self._statement()
+            except ParseError as e:
+                self._record_parse_error(e)
+                self._synchronize()
+        return list(self._diagnostics)
+
+    def _record_parse_error(self, error: ParseError) -> None:
+        line, column = parse_line_column(error.message)
+        tip = error.tip or (
+            "Fix the syntax problem at the reported location, then run Analyze again."
+        )
+        self._diagnostics.append(
+            Diagnostic(
+                stage="syntax",
+                message=error.message,
+                tip=tip,
+                line=line,
+                column=column,
+            )
+        )
+
+    def _at_recoverable_statement(self) -> bool:
+        """True when the current token can start a fresh recovered statement."""
+        if self._check_keyword(*_RECOVERABLE_STATEMENT_KEYWORDS):
+            return True
+        if self._check(TokenType.PLUSPLUS) or self._check(TokenType.MINUSMINUS):
+            return True
+        if self._check(TokenType.IDENT):
+            nxt = self._peek_ahead(1)
+            if nxt is not None and nxt.type in (
+                TokenType.EQUAL,
+                TokenType.PLUSPLUS,
+                TokenType.MINUSMINUS,
+                TokenType.LBRACKET,
+                TokenType.SEMICOLON,
+                TokenType.RESERVED_KEYWORD,  # e.g. swapped `name type`
+            ):
+                return True
+        return False
+
+    def _synchronize(self) -> None:
+        """Skip tokens until a likely statement boundary (panic-mode recovery).
+
+        If the error token already starts the next statement (common when a
+        semicolon is missing before `if` / `print` / a declaration), stay put
+        so that statement can still be parsed and reported accurately.
+        """
+        if self._is_at_end():
+            return
+        if self._at_recoverable_statement():
+            return
+        self._advance()
+        while not self._is_at_end():
+            if self._previous().type == TokenType.SEMICOLON:
+                return
+            if self._check(TokenType.RBRACE):
+                return
+            if self._check_keyword("else"):
+                return
+            if self._at_recoverable_statement():
+                return
+            self._advance()
 
     def _is_at_end(self) -> bool:
         return self._peek().type == TokenType.EOF
@@ -812,6 +903,12 @@ class Parser:
             try:
                 statements.append(self._statement())
             except ParseError as e:
+                if self._collecting_errors:
+                    self._record_parse_error(e)
+                    if e.partial is not None:
+                        statements.append(e.partial)
+                    self._synchronize()
+                    continue
                 recovered = list(statements)
                 if e.partial is not None:
                     recovered.append(e.partial)

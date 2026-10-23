@@ -18,7 +18,7 @@ TOTAL_STAGES = 4
 
 def run_source(source: str, *, run_execution: bool = False) -> int:
     """Run the CLI simulation on source text."""
-    print("PNC Language Analysis Simulator")
+    print("VCSS Language Analysis Simulator")
     print("Scanner-Parser Architecture Demonstration")
     print(format_transformation_flow())
 
@@ -35,6 +35,12 @@ def run_source(source: str, *, run_execution: bool = False) -> int:
         if result.lexical_tip:
             print(f"  Tip: {result.lexical_tip}")
         print()
+        if result.diagnostics:
+            print("All errors (lexical + syntax), ordered by line number.")
+            print("Token table / FA / AST still stop at the first pipeline failure.")
+            print()
+            print(result.format_diagnostics())
+            print()
         if result.tokens:
             print("Partial Token Table (before dead state):")
             print(format_token_table(result.tokens))
@@ -62,6 +68,9 @@ def run_source(source: str, *, run_execution: bool = False) -> int:
         if result.syntax_tip:
             print(f"  Tip: {result.syntax_tip}")
         print()
+        if result.diagnostics:
+            print(result.format_diagnostics())
+            print()
         if result.statements:
             print("Partial Abstract Syntax Tree (recovered before the error):")
             print(format_ast_tree(result.statements))

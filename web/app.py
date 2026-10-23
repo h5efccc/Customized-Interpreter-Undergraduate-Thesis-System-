@@ -237,6 +237,18 @@ def _result_to_json(result: AnalysisResult) -> dict[str, Any]:
         "lexical_tip": result.lexical_tip,
         "syntax_error": result.syntax_error,
         "syntax_tip": result.syntax_tip,
+        "error_count": result.error_count,
+        "diagnostics": [
+            {
+                "stage": d.stage,
+                "message": d.message,
+                "tip": d.tip,
+                "line": d.line,
+                "column": d.column,
+            }
+            for d in result.diagnostics
+        ],
+        "diagnostics_report": result.format_diagnostics(),
         "tokens": tokens,
         "token_stream": stream,
         "automaton": automaton,

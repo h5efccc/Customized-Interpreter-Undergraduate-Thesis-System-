@@ -438,7 +438,7 @@ class _DiagramNode:
 class SimulatorApp(tk.Tk):
     def __init__(self, initial_source: str = "", initial_path: str | None = None) -> None:
         super().__init__()
-        self.title("PNC Language Analysis Simulator")
+        self.title("VCSS Language Analysis Simulator")
         self.geometry("1180x720")
         self.minsize(960, 600)
 
@@ -498,7 +498,7 @@ class SimulatorApp(tk.Tk):
 
         self._header_title = tk.Label(
             left_titles,
-            text="PNC Language Analysis Simulator",
+            text="VCSS Language Analysis Simulator",
             font=("Segoe UI", 16, "bold"),
             fg="white",
             bg=t.accent,
@@ -1371,19 +1371,51 @@ class SimulatorApp(tk.Tk):
             warn_note = ""
             if result.automaton and any(s.kind == "warn" for s in result.automaton.states):
                 warn_note = " — Warn state before Dead"
+            multi_note = (
+                f" — {result.error_count} errors total"
+                if result.error_count > 1
+                else ""
+            )
             self.lexical_status.config(
-                text=f"Lexical analysis: FAILED — {result.lexical_error}{partial_note}{dead_note}{warn_note}",
+                text=(
+                    f"Lexical analysis: FAILED — {result.lexical_error}"
+                    f"{partial_note}{dead_note}{warn_note}{multi_note}"
+                ),
                 fg=self.theme.error,
             )
-            self._show_lexical_tip(result.lexical_tip)
-            self.syntax_status.config(text="Syntax analysis: skipped (lexical error)", fg=self.theme.muted)
-            self._hide_syntax_tip()
+            self._show_lexical_tip(result.lexical_tip, error_count=result.error_count)
+            syn_count = sum(1 for d in result.diagnostics if d.stage == "syntax")
+            if syn_count:
+                self.syntax_status.config(
+                    text=(
+                        f"Syntax analysis: AST skipped (lexical error) — "
+                        f"{syn_count} syntax issue(s) still listed in Summary"
+                    ),
+                    fg=self.theme.error,
+                )
+                first_syn_tip = next(
+                    (d.tip for d in result.diagnostics if d.stage == "syntax"),
+                    result.syntax_tip,
+                )
+                self._show_syntax_tip(first_syn_tip, error_count=syn_count)
+            else:
+                self.syntax_status.config(
+                    text="Syntax analysis: skipped (lexical error)",
+                    fg=self.theme.muted,
+                )
+                self._hide_syntax_tip()
             self._populate_tokens(result.tokens)
             self._populate_stream(result.tokens)
             self._populate_automaton(result.automaton)
             self._set_summary(result, run_execution)
-            self.status_var.set("Lexical error — check Tokens table and FA diagram (Warn/Dead).")
-            self.notebook.select(0)
+            count_note = (
+                f"{result.error_count} error(s) found — see Summary for the full list."
+                if result.error_count > 1
+                else "Lexical error — check Tokens table and FA diagram (Warn/Dead)."
+            )
+            self.status_var.set(count_note)
+            # Prefer Summary when multiple mixed errors are present.
+            self.notebook.select(2 if result.error_count > 1 else 0)
             return
 
         self.lexical_status.config(
@@ -1401,14 +1433,27 @@ class SimulatorApp(tk.Tk):
                 if result.statements
                 else " — no complete statements recovered"
             )
+            multi_note = (
+                f" — {result.error_count} errors total"
+                if result.error_count > 1
+                else ""
+            )
             self.syntax_status.config(
-                text=f"Syntax analysis: FAILED — {result.syntax_error}{partial_note}",
+                text=(
+                    f"Syntax analysis: FAILED — {result.syntax_error}"
+                    f"{partial_note}{multi_note}"
+                ),
                 fg=self.theme.error,
             )
-            self._show_syntax_tip(result.syntax_tip)
+            self._show_syntax_tip(result.syntax_tip, error_count=result.error_count)
             self._populate_ast(result.statements)
             self._set_summary(result, run_execution)
-            self.status_var.set("Syntax error — partial AST shown with fix tip.")
+            count_note = (
+                f"{result.error_count} syntax error(s) — see Summary for the full list."
+                if result.error_count > 1
+                else "Syntax error — partial AST shown with fix tip."
+            )
+            self.status_var.set(count_note)
             self.notebook.select(1)
             return
 
@@ -1488,9 +1533,16 @@ class SimulatorApp(tk.Tk):
                     self.stream_text.insert(tk.END, chunk)
         self.stream_text.config(state=tk.DISABLED)
 
-    def _show_lexical_tip(self, tip: str | None) -> None:
-        if tip:
-            self.lexical_tip.config(text=f"Tip: {tip}")
+    def _show_lexical_tip(self, tip: str | None, *, error_count: int = 1) -> None:
+        if tip or error_count > 1:
+            parts: list[str] = []
+            if error_count > 1:
+                parts.append(
+                    f"{error_count} lexical errors found (listed by line in the Summary tab)."
+                )
+            if tip:
+                parts.append(f"Tip (first error): {tip}" if error_count > 1 else f"Tip: {tip}")
+            self.lexical_tip.config(text=" ".join(parts))
             if not self.lexical_tip.winfo_ismapped():
                 self.lexical_tip.pack(fill=tk.X, padx=10, pady=(0, 6), after=self.lexical_status)
         else:
@@ -1699,9 +1751,16 @@ class SimulatorApp(tk.Tk):
             self._set_diagram_zoom(self._diagram_zoom / _DIAG_ZOOM_STEP)
         return "break"
 
-    def _show_syntax_tip(self, tip: str | None) -> None:
-        if tip:
-            self.syntax_tip.config(text=f"Tip: {tip}")
+    def _show_syntax_tip(self, tip: str | None, *, error_count: int = 1) -> None:
+        if tip or error_count > 1:
+            parts: list[str] = []
+            if error_count > 1:
+                parts.append(
+                    f"{error_count} syntax errors found (listed by line in the Summary tab)."
+                )
+            if tip:
+                parts.append(f"Tip (first error): {tip}" if error_count > 1 else f"Tip: {tip}")
+            self.syntax_tip.config(text=" ".join(parts))
             if not self.syntax_tip.winfo_ismapped():
                 self.syntax_tip.pack(fill=tk.X, padx=10, pady=(0, 6), after=self.syntax_status)
         else:
@@ -2060,7 +2119,7 @@ class SimulatorApp(tk.Tk):
 
     def _set_summary(self, result: AnalysisResult, run_execution: bool) -> None:
         if result.lexical_error:
-            syntax_status = "SKIPPED (lexical error)"
+            syntax_status = "AST skipped (lexical error) — syntax issues still listed below"
         elif result.syntax_valid:
             syntax_status = "PASSED"
         else:
@@ -2073,7 +2132,7 @@ class SimulatorApp(tk.Tk):
             f"Syntax validation:   {syntax_status}",
         ]
         if result.lexical_error:
-            lines.append(f"Lexical error:       {result.lexical_error}")
+            lines.append(f"First lexical error: {result.lexical_error}")
             if result.lexical_tip:
                 lines.append(f"Tip:                 {result.lexical_tip}")
             if result.token_count:
@@ -2084,11 +2143,21 @@ class SimulatorApp(tk.Tk):
                 elif result.automaton.has_dead_state:
                     lines.append("FA result:           DEAD state reached")
         if result.syntax_error:
-            lines.append(f"Syntax error:        {result.syntax_error}")
+            lines.append(f"First syntax error:  {result.syntax_error}")
             if result.syntax_tip:
                 lines.append(f"Tip:                 {result.syntax_tip}")
             if result.statements:
                 lines.append(f"Partial AST nodes:   {result.statement_count}")
+        if result.diagnostics:
+            lines.append("")
+            lines.append(
+                "All errors below (lexical + syntax), ordered by line number."
+            )
+            lines.append(
+                "Token table / FA / AST still stop at the first pipeline failure."
+            )
+            lines.append("")
+            lines.append(result.format_diagnostics())
         if run_execution:
             status = "PASSED" if result.execution_ok else "FAILED"
             lines.append(f"Execution:           {status}")
