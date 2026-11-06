@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import io
+import os
+import sys
 from contextlib import redirect_stdout
 from dataclasses import dataclass, field
 from pathlib import Path
+
+# Path resilience for PyInstaller
+base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
 
 from .automaton import AutomatonTrace, build_automaton_trace
 from .diagnostics import (

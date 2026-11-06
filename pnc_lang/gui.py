@@ -469,6 +469,19 @@ class SimulatorApp(tk.Tk):
 
         self._build_ui()
         self._apply_theme()
+        
+        # Set window icon
+        try:
+            from pathlib import Path
+            import sys
+            import os
+            base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+            icon_path = os.path.join(base_path, "icon.ico")
+            if os.path.exists(icon_path):
+                self.iconbitmap(icon_path)
+        except Exception:
+            pass
+
         if initial_source:
             self.source_text.insert("1.0", initial_source)
             if initial_path:
@@ -476,6 +489,88 @@ class SimulatorApp(tk.Tk):
         else:
             self._load_default_example()
         self._refresh_editor_chrome()
+
+        # Show manual popup on startup
+        self.after(500, self._show_manual_popup)
+
+    def _show_manual_popup(self) -> None:
+        """Show the 'Know more about this software' user manual popup."""
+        popup = tk.Toplevel(self)
+        popup.title("Know more about this software - User Manual")
+        popup.geometry("600x450")
+        popup.transient(self)
+        popup.grab_set()
+        
+        # Center the popup relative to main window
+        self.update_idletasks()
+        x = self.winfo_x() + (self.winfo_width() // 2) - 300
+        y = self.winfo_y() + (self.winfo_height() // 2) - 225
+        popup.geometry(f"+{x}+{y}")
+
+        t = self.theme
+        popup.configure(bg=t.bg)
+
+        header = tk.Frame(popup, bg=t.accent, pady=10)
+        header.pack(fill=tk.X)
+        tk.Label(
+            header, 
+            text="PNC Simulator User Manual", 
+            font=("Segoe UI", 14, "bold"), 
+            fg="white", 
+            bg=t.accent
+        ).pack()
+
+        content_frame = tk.Frame(popup, bg=t.bg, padx=20, pady=20)
+        content_frame.pack(fill=tk.BOTH, expand=True)
+
+        manual_text = (
+            "Welcome to the PNC Language Analysis Simulator!\n\n"
+            "This tool is designed to demonstrate the inner workings of a modern compiler "
+            "frontend, focusing on Scanner-Parser architecture and Syntax Analysis.\n\n"
+            "CORE FEATURES:\n"
+            "• Scanner-Parser Architecture: Real-time tokenization and parsing.\n"
+            "• AST Visualization: Interactive tree and diagram views of the code structure.\n"
+            "• Full Syntax Validation: Detailed error reporting and recovery.\n"
+            "• FA Trace: Visualize the Finite Automaton state transitions.\n\n"
+            "HOW TO USE:\n"
+            "1. Editor: Write your .pnc code in the left panel.\n"
+            "2. Analysis: Click 'Run Analysis' to process the code.\n"
+            "3. Inspection: Use the right tabs to explore Tokens, AST, and FA Trace.\n"
+            "4. Themes: Switch between Default and Dark modes in the header.\n\n"
+            "Happy Coding!"
+        )
+
+        text_widget = tk.Text(
+            content_frame, 
+            wrap=tk.WORD, 
+            font=("Segoe UI", 10), 
+            bg=t.bg, 
+            fg=t.text,
+            relief=tk.FLAT,
+            padx=10,
+            pady=10
+        )
+        text_widget.insert("1.0", manual_text)
+        text_widget.config(state=tk.DISABLED)
+        text_widget.pack(fill=tk.BOTH, expand=True)
+
+        footer = tk.Frame(popup, bg=t.bg, pady=15)
+        footer.pack(fill=tk.X)
+        
+        tk.Button(
+            footer,
+            text="Get Started",
+            command=popup.destroy,
+            font=("Segoe UI", 10, "bold"),
+            bg=t.accent,
+            fg="white",
+            activebackground=t.accent_hover,
+            activeforeground="white",
+            relief=tk.FLAT,
+            padx=20,
+            pady=8,
+            cursor="hand2"
+        ).pack()
 
     def _build_ui(self) -> None:
         self._build_header()

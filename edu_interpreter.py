@@ -1,4 +1,9 @@
 import sys
+import os
+
+# Path resilience for PyInstaller
+base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(base_path)
 
 from pnc_lang.gui import launch_gui, launch_gui_with_file
 from pnc_lang.runner import run_file
